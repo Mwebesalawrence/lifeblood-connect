@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  role            String    @default("DONOR")
+  phone           String?
+  bloodType       String?
+  dateOfBirth     DateTime?
+  gender          String?
+  address         String?
+  city            String?
+  country         String    @default("Uganda")
+  avatar          String?
+  points          Int       @default(0)
+  totalDonations  Int       @default(0)
+  isEligible      Boolean   @default(true)
+  lastDonationDate DateTime?
+  nextEligibleDate DateTime?
+  token           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  donations       Donation[]
+  appointments    Appointment[]
+  notifications   Notification[]
+  rewards         UserReward[]
+}
+
+model DonationCenter {
+  id             String   @id @default(cuid())
+  name           String
+  address        String
+  city           String
+  district       String?
+  latitude       Float?
+  longitude      Float?
+  phone          String?
+  email          String?
+  operatingHours String?
+  type           String   @default("HOSPITAL")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  donations      Donation[]
+  appointments   Appointment[]
+  inventory      BloodInventory[]
+}
+
+model Donation {
+  id            String   @id @default(cuid())
+  donorId       String
+  centerId      String
+  date          DateTime @default(now())
+  bloodType     String
+  volumeMl      Int      @default(450)
+  status        String   @default("COMPLETED")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  donor         User           @relation(fields: [donorId], references: [id])
+  center        DonationCenter @relation(fields: [centerId], references: [id])
+}
+
+model Appointment {
+  id            String   @id @default(cuid())
+  donorId       String
+  centerId      String
+  date          DateTime
+  timeSlot      String
+  status        String   @default("SCHEDULED")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  donor         User           @relation(fields: [donorId], references: [id])
+  center        DonationCenter @relation(fields: [centerId], references: [id])
+}
+
+model BloodInventory {
+  id        String   @id @default(cuid())
+  centerId  String
+  bloodType String
+  units     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  center    DonationCenter @relation(fields: [centerId], references: [id])
+
+  @@unique([centerId, bloodType])
+}
+
+model Reward {
+  id             String   @id @default(cuid())
+  name           String
+  description    String
+  icon           String?
+  pointsRequired Int
+  type           String   @default("BADGE")
+  createdAt      DateTime @default(now())
+
+  users          UserReward[]
+}
+
+model UserReward {
+  id       String   @id @default(cuid())
+  userId   String
+  rewardId String
+  earnedAt DateTime @default(now())
+
+  user     User   @relation(fields: [userId], references: [id])
+  reward   Reward @relation(fields: [rewardId], references: [id])
+
+  @@unique([userId, rewardId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+}
