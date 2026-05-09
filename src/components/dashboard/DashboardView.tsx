@@ -52,22 +52,35 @@ function BloodDrivesInArea() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const params = currentUser?.city
-          ? { city: currentUser.city, upcoming: true }
-          : { upcoming: true };
-        const data = await api.bloodDrives.list(params);
-        setDrives(data);
-      } catch {
-        // silently fail
-      } finally {
-        setLoading(false);
-      }
+  async function load() {
+    try {
+      const params = currentUser?.city
+        ? { city: currentUser.city }
+        : {};
+      const data = await api.bloodDrives.list(params);
+      setDrives(data);
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     load();
   }, [currentUser?.city]);
+
+  // Auto-refresh every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      load();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [currentUser?.city]);
+
+  // Separate upcoming and cancelled drives
+  const upcomingDrives = drives.filter((d) => d.status !== 'CANCELLED' && d.status !== 'COMPLETED' && new Date(d.endDate) >= new Date());
+  const cancelledDrives = drives.filter((d) => d.status === 'CANCELLED');
 
   if (loading) {
     return (
@@ -89,17 +102,22 @@ function BloodDrivesInArea() {
         <CardTitle className="flex items-center gap-2 text-lg">
           <Calendar className="h-5 w-5 text-primary" /> Blood Drives Near You
         </CardTitle>
-        <Badge variant="secondary" className="text-xs">{drives.length} upcoming</Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={load}>
+            <ArrowRight className="h-3.5 w-3.5 rotate-90" />
+          </Button>
+          <Badge variant="secondary" className="text-xs">{upcomingDrives.length} upcoming</Badge>
+        </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {drives.length === 0 ? (
+        {upcomingDrives.length === 0 && cancelledDrives.length === 0 ? (
           <div className="py-6 text-center">
             <Calendar className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">No upcoming blood drives in your area</p>
           </div>
         ) : (
           <div className="max-h-96 space-y-2 overflow-y-auto custom-scrollbar pr-1">
-            {drives.slice(0, 5).map((drive) => {
+            {upcomingDrives.slice(0, 5).map((drive) => {
               let days: string[] = [];
               try { days = JSON.parse(drive.scheduledDays); } catch { days = []; }
 
@@ -168,6 +186,42 @@ function BloodDrivesInArea() {
                 </div>
               );
             })}
+
+            {/* Show cancelled drives */}
+            {cancelledDrives.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 pt-2 pb-1">
+                  <div className="h-px flex-1 bg-border/40" />
+                  <span className="text-xs text-muted-foreground">Cancelled</span>
+                  <div className="h-px flex-1 bg-border/40" />
+                </div>
+                {cancelledDrives.slice(0, 3).map((drive) => {
+                  const fmtDate = (d: string) => {
+                    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  };
+
+                  return (
+                    <div
+                      key={drive.id}
+                      className="rounded-xl border border-red-200 bg-red-50/50 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
+                          <AlertCircle className="h-5 w-5 text-red-500" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-foreground text-sm truncate">{drive.title}</p>
+                          <p className="text-xs text-red-600">
+                            Cancelled · {drive.location}, {drive.city}
+                          </p>
+                        </div>
+                        <Badge className="bg-red-100 text-red-700 border-red-200 text-xs shrink-0">Cancelled</Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
       </CardContent>

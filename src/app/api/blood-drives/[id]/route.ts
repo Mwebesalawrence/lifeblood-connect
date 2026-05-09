@@ -37,6 +37,42 @@ export async function PATCH(
       data: updateData,
     });
 
+    // Notify donors when a blood drive is cancelled
+    if (data.status === 'CANCELLED') {
+      const donorsInCity = await db.user.findMany({
+        where: { role: 'DONOR', city: { contains: drive.city } },
+      });
+
+      for (const donor of donorsInCity) {
+        await db.notification.create({
+          data: {
+            userId: donor.id,
+            title: 'Blood Drive Cancelled',
+            message: `The blood drive "${drive.title}" scheduled at ${drive.location}, ${drive.city} has been cancelled. We apologize for any inconvenience. Please check back for future events.`,
+            type: 'BLOOD_DRIVE',
+          },
+        });
+      }
+    }
+
+    // Notify donors when a blood drive is activated
+    if (data.status === 'ACTIVE') {
+      const donorsInCity = await db.user.findMany({
+        where: { role: 'DONOR', city: { contains: drive.city } },
+      });
+
+      for (const donor of donorsInCity) {
+        await db.notification.create({
+          data: {
+            userId: donor.id,
+            title: 'Blood Drive Now Active!',
+            message: `The blood drive "${drive.title}" at ${drive.location}, ${drive.city} is now active! Come donate from ${drive.startTime} to ${drive.endTime}.`,
+            type: 'BLOOD_DRIVE',
+          },
+        });
+      }
+    }
+
     return NextResponse.json(drive);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update blood drive' }, { status: 500 });
@@ -55,7 +91,28 @@ export async function DELETE(
     const admin = await db.user.findFirst({ where: { token, role: 'ADMIN' } });
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+    // Get the drive before deleting so we can notify donors
+    const drive = await db.bloodDrive.findUnique({ where: { id } });
+
     await db.bloodDrive.delete({ where: { id } });
+
+    // Notify donors about the deleted blood drive
+    if (drive) {
+      const donorsInCity = await db.user.findMany({
+        where: { role: 'DONOR', city: { contains: drive.city } },
+      });
+
+      for (const donor of donorsInCity) {
+        await db.notification.create({
+          data: {
+            userId: donor.id,
+            title: 'Blood Drive Removed',
+            message: `The blood drive "${drive.title}" at ${drive.location}, ${drive.city} has been removed. We apologize for any inconvenience.`,
+            type: 'BLOOD_DRIVE',
+          },
+        });
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
