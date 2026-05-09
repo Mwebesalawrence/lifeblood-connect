@@ -1,8 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL,
-});
+const prisma = new PrismaClient();
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const TIME_SLOTS = ['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM'];
@@ -19,9 +17,10 @@ function randomItem<T>(arr: T[]): T {
 }
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
   // Clean existing data
+  await prisma.bloodDrive.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.userReward.deleteMany();
   await prisma.appointment.deleteMany();
@@ -33,12 +32,12 @@ async function main() {
 
   // Create rewards
   const rewards = await Promise.all([
-    prisma.reward.create({ data: { name: 'First Donation', description: 'Made your first blood donation', icon: '🩸', pointsRequired: 10, type: 'BADGE' } }),
-    prisma.reward.create({ data: { name: 'Regular Donor', description: 'Donated blood 3 times', icon: '⭐', pointsRequired: 25, type: 'BADGE' } }),
-    prisma.reward.create({ data: { name: 'Five Club', description: 'Donated blood 5 times', icon: '🤝', pointsRequired: 50, type: 'BADGE' } }),
-    prisma.reward.create({ data: { name: 'Life Saver', description: 'Donated blood 10 times', icon: '❤️‍🩹', pointsRequired: 100, type: 'BADGE' } }),
-    prisma.reward.create({ data: { name: 'Hero Award', description: 'Donated blood 15 times', icon: '🏆', pointsRequired: 150, type: 'ACHIEVEMENT' } }),
-    prisma.reward.create({ data: { name: 'Community Champion', description: 'Outstanding contribution to blood donation', icon: '🎖️', pointsRequired: 200, type: 'ACHIEVEMENT' } }),
+    prisma.reward.create({ data: { name: 'First Donation', description: 'Made your first blood donation', icon: 'drop', pointsRequired: 10, type: 'BADGE' } }),
+    prisma.reward.create({ data: { name: 'Regular Donor', description: 'Donated blood 3 times', icon: 'star', pointsRequired: 25, type: 'BADGE' } }),
+    prisma.reward.create({ data: { name: 'Five Club', description: 'Donated blood 5 times', icon: 'handshake', pointsRequired: 50, type: 'BADGE' } }),
+    prisma.reward.create({ data: { name: 'Life Saver', description: 'Donated blood 10 times', icon: 'heart', pointsRequired: 100, type: 'BADGE' } }),
+    prisma.reward.create({ data: { name: 'Hero Award', description: 'Donated blood 15 times', icon: 'trophy', pointsRequired: 150, type: 'ACHIEVEMENT' } }),
+    prisma.reward.create({ data: { name: 'Community Champion', description: 'Outstanding contribution to blood donation', icon: 'medal', pointsRequired: 200, type: 'ACHIEVEMENT' } }),
   ]);
 
   // Create donation centers
@@ -178,10 +177,72 @@ async function main() {
     await prisma.notification.create({ data: n });
   }
 
-  console.log('✅ Seeding completed successfully!');
+  // Create blood drives
+  const bloodDrives = await Promise.all([
+    prisma.bloodDrive.create({
+      data: {
+        title: 'Kampala City Blood Drive',
+        description: 'Join us for a community blood drive at Makerere University. All blood types needed. Free health screening available for all donors.',
+        location: 'Makerere University Main Hall',
+        district: 'Kampala Central',
+        city: 'Kampala',
+        latitude: 0.3350,
+        longitude: 32.5670,
+        startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        scheduledDays: JSON.stringify(['Monday', 'Wednesday', 'Friday']),
+        startTime: '08:00 AM',
+        endTime: '04:00 PM',
+        organizer: 'Uganda Blood Transfusion Service',
+        contactPhone: '+256-414-256881',
+        status: 'UPCOMING',
+      },
+    }),
+    prisma.bloodDrive.create({
+      data: {
+        title: 'Gulu Community Blood Drive',
+        description: 'A two-day blood drive event at Gulu Regional Hospital. Help us save lives in Northern Uganda.',
+        location: 'Gulu Regional Hospital Grounds',
+        district: 'Gulu',
+        city: 'Gulu',
+        latitude: 2.7745,
+        longitude: 32.2990,
+        startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+        scheduledDays: JSON.stringify(['Saturday', 'Sunday']),
+        startTime: '09:00 AM',
+        endTime: '03:00 PM',
+        organizer: 'Gulu Regional Hospital',
+        contactPhone: '+256-471-431234',
+        status: 'UPCOMING',
+      },
+    }),
+    prisma.bloodDrive.create({
+      data: {
+        title: 'Jinja Town Blood Drive',
+        description: 'Annual blood drive in Jinja town. Come donate and receive a free health check-up plus refreshments.',
+        location: 'Jinja Main Street Community Center',
+        district: 'Jinja',
+        city: 'Jinja',
+        latitude: 0.4361,
+        longitude: 33.2051,
+        startDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        scheduledDays: JSON.stringify(['Saturday']),
+        startTime: '08:00 AM',
+        endTime: '05:00 PM',
+        organizer: 'Jinja Regional Referral Hospital',
+        contactPhone: '+256-434-121234',
+        status: 'UPCOMING',
+      },
+    }),
+  ]);
+
+  console.log('Seeding completed successfully!');
   console.log(`   - ${donors.length} donors created`);
   console.log(`   - ${centers.length} centers created`);
   console.log(`   - ${rewards.length} rewards created`);
+  console.log(`   - ${bloodDrives.length} blood drives created`);
   console.log(`   Admin login: admin@bloodconnect.ug / admin123`);
   console.log(`   Donor login: john.musoke@gmail.com / donor123`);
 }

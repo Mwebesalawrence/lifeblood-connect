@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Droplets, CalendarDays, Heart, Award, Clock, MapPin,
   Bell, TrendingUp, CheckCircle2, AlertCircle, Activity,
-  ArrowRight, ChevronRight,
+  ArrowRight, ChevronRight, Calendar,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,135 @@ function SkeletonRow() {
       </div>
       <Skeleton className="h-6 w-16 rounded-full" />
     </div>
+  );
+}
+
+function BloodDrivesInArea() {
+  const { currentUser } = useAppStore();
+  const [drives, setDrives] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const params = currentUser?.city
+          ? { city: currentUser.city, upcoming: true }
+          : { upcoming: true };
+        const data = await api.bloodDrives.list(params);
+        setDrives(data);
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [currentUser?.city]);
+
+  if (loading) {
+    return (
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-40" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-12 w-full rounded-lg" />
+          <Skeleton className="h-12 w-full rounded-lg" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-border/50 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Calendar className="h-5 w-5 text-primary" /> Blood Drives Near You
+        </CardTitle>
+        <Badge variant="secondary" className="text-xs">{drives.length} upcoming</Badge>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {drives.length === 0 ? (
+          <div className="py-6 text-center">
+            <Calendar className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">No upcoming blood drives in your area</p>
+          </div>
+        ) : (
+          <div className="max-h-96 space-y-2 overflow-y-auto custom-scrollbar pr-1">
+            {drives.slice(0, 5).map((drive) => {
+              let days: string[] = [];
+              try { days = JSON.parse(drive.scheduledDays); } catch { days = []; }
+
+              const isExpanded = expandedId === drive.id;
+              const fmtDate = (d: string) => {
+                return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              };
+
+              return (
+                <div
+                  key={drive.id}
+                  className="rounded-xl border border-border/40 bg-white transition-all hover:shadow-sm"
+                >
+                  <button
+                    className="flex items-center gap-3 w-full p-3 text-left"
+                    onClick={() => setExpandedId(isExpanded ? null : drive.id)}
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <Droplets className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-foreground text-sm truncate">{drive.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {fmtDate(drive.startDate)} · <MapPin className="inline h-3 w-3" /> {drive.city}
+                      </p>
+                    </div>
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                  </button>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="px-3 pb-3 pt-0"
+                    >
+                      <div className="ml-5 pl-4 space-y-2 border-l-2 border-primary/20">
+                        <p className="text-xs text-muted-foreground">{drive.description}</p>
+                        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{drive.location}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{drive.startTime} — {drive.endTime}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            <span>{days.join(', ')}</span>
+                          </div>
+                          {drive.organizer && (
+                            <div className="flex items-center gap-1">
+                              <Activity className="h-3 w-3" />
+                              <span>{drive.organizer}</span>
+                            </div>
+                          )}
+                        </div>
+                        {drive.contactPhone && (
+                          <p className="text-xs text-muted-foreground">
+                            Contact: {drive.contactPhone}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -195,7 +324,7 @@ export default function DashboardView() {
       </motion.div>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        {/* Left Column: Donations + Appointments */}
+        {/* Left Column */}
         <div className="space-y-8 lg:col-span-2">
           {/* Upcoming Appointments */}
           <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.2 }}>
@@ -286,7 +415,7 @@ export default function DashboardView() {
           </motion.div>
         </div>
 
-        {/* Right Column: Notifications + Quick Actions */}
+        {/* Right Column */}
         <div className="space-y-8">
           {/* Notifications */}
           <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.25 }}>
@@ -341,6 +470,11 @@ export default function DashboardView() {
                 )}
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Blood Drives in Your Area */}
+          <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.28 }}>
+            <BloodDrivesInArea />
           </motion.div>
 
           {/* Quick Actions */}

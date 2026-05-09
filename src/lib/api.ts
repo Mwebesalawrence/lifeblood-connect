@@ -68,4 +68,20 @@ export const api = {
     update: (data: { centerId: string; bloodType: string; units: number }) =>
       request<any>('/inventory', { method: 'PUT', body: JSON.stringify(data) }),
   },
+  bloodDrives: {
+    list: (params?: { district?: string; city?: string; upcoming?: boolean }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.district) searchParams.set('district', params.district);
+      if (params?.city) searchParams.set('city', params.city);
+      if (params?.upcoming) searchParams.set('upcoming', 'true');
+      const qs = searchParams.toString();
+      return request<any[]>(`/blood-drives${qs ? `?${qs}` : ''}`);
+    },
+    create: (data: Record<string, any>) =>
+      request<any>('/blood-drives', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Record<string, any>) =>
+      request<any>(`/blood-drives/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<any>(`/blood-drives/${id}`, { method: 'DELETE' }),
+  },
 };

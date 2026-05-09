@@ -135,3 +135,24 @@ model Notification {
 
   user      User     @relation(fields: [userId], references: [id])
 }
+
+model BloodDrive {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  location      String
+  district      String
+  city          String
+  latitude      Float?
+  longitude     Float?
+  startDate     DateTime
+  endDate       DateTime
+  scheduledDays String
+  startTime     String
+  endTime       String
+  organizer     String?
+  contactPhone  String?
+  status        String   @default("UPCOMING")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
