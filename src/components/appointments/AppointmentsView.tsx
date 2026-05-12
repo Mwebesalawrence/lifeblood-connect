@@ -660,12 +660,16 @@ export default function AppointmentsView() {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  const handleCancel = async (id: string) => {
+    const handleCancel = async (id: string) => {
     setCancellingId(id);
     try {
+      const token = useAppStore.getState().token;
       const res = await fetch('/api/appointments', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ id, status: 'CANCELLED' }),
       });
       if (!res.ok) {

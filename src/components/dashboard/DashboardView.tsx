@@ -54,10 +54,8 @@ function BloodDrivesInArea() {
 
   async function load() {
     try {
-      const params = currentUser?.city
-        ? { city: currentUser.city }
-        : {};
-      const data = await api.bloodDrives.list(params);
+      // Fetch ALL blood drives (no city filter)
+      const data = await api.bloodDrives.list();
       setDrives(data);
     } catch {
       // silently fail
@@ -68,7 +66,7 @@ function BloodDrivesInArea() {
 
   useEffect(() => {
     load();
-  }, [currentUser?.city]);
+  }, []);
 
   // Auto-refresh every 60 seconds
   useEffect(() => {
@@ -76,10 +74,25 @@ function BloodDrivesInArea() {
       load();
     }, 60000);
     return () => clearInterval(interval);
-  }, [currentUser?.city]);
+  }, []);
 
-  // Separate upcoming and cancelled drives
-  const upcomingDrives = drives.filter((d) => d.status !== 'CANCELLED' && d.status !== 'COMPLETED' && new Date(d.endDate) >= new Date());
+  // Split into "in your area" and "other drives"
+  const donorCity = currentUser?.city?.toLowerCase() || '';
+  const inAreaDrives = drives.filter(
+    (d) =>
+      d.status !== 'CANCELLED' &&
+      d.status !== 'COMPLETED' &&
+      new Date(d.endDate) >= new Date() &&
+      donorCity &&
+      d.city?.toLowerCase().includes(donorCity)
+  );
+  const otherDrives = drives.filter(
+    (d) =>
+      d.status !== 'CANCELLED' &&
+      d.status !== 'COMPLETED' &&
+      new Date(d.endDate) >= new Date() &&
+      !(donorCity && d.city?.toLowerCase().includes(donorCity))
+  );
   const cancelledDrives = drives.filter((d) => d.status === 'CANCELLED');
 
   if (loading) {
@@ -96,96 +109,188 @@ function BloodDrivesInArea() {
     );
   }
 
+  const allUpcoming = [...inAreaDrives, ...otherDrives];
+  const totalUpcoming = allUpcoming.length;
+
   return (
     <Card className="border-border/50 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Calendar className="h-5 w-5 text-primary" /> Blood Drives Near You
+          <Calendar className="h-5 w-5 text-primary" /> Blood Drives
         </CardTitle>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={load}>
             <ArrowRight className="h-3.5 w-3.5 rotate-90" />
           </Button>
-          <Badge variant="secondary" className="text-xs">{upcomingDrives.length} upcoming</Badge>
+          <Badge variant="secondary" className="text-xs">{totalUpcoming} upcoming</Badge>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        {upcomingDrives.length === 0 && cancelledDrives.length === 0 ? (
+        {totalUpcoming === 0 && cancelledDrives.length === 0 ? (
           <div className="py-6 text-center">
             <Calendar className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No upcoming blood drives in your area</p>
+            <p className="text-sm text-muted-foreground">No upcoming blood drives</p>
           </div>
         ) : (
           <div className="max-h-96 space-y-2 overflow-y-auto custom-scrollbar pr-1">
-            {upcomingDrives.slice(0, 5).map((drive) => {
-              let days: string[] = [];
-              try { days = JSON.parse(drive.scheduledDays); } catch { days = []; }
-
-              const isExpanded = expandedId === drive.id;
-              const fmtDate = (d: string) => {
-                return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-              };
-
-              return (
-                <div
-                  key={drive.id}
-                  className="rounded-xl border border-border/40 bg-white transition-all hover:shadow-sm"
-                >
-                  <button
-                    className="flex items-center gap-3 w-full p-3 text-left"
-                    onClick={() => setExpandedId(isExpanded ? null : drive.id)}
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                      <Droplets className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-foreground text-sm truncate">{drive.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {fmtDate(drive.startDate)} · <MapPin className="inline h-3 w-3" /> {drive.city}
-                      </p>
-                    </div>
-                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
-                  </button>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="px-3 pb-3 pt-0"
-                    >
-                      <div className="ml-5 pl-4 space-y-2 border-l-2 border-primary/20">
-                        <p className="text-xs text-muted-foreground">{drive.description}</p>
-                        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>{drive.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{drive.startTime} — {drive.endTime}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <CalendarDays className="h-3 w-3" />
-                            <span>{days.join(', ')}</span>
-                          </div>
-                          {drive.organizer && (
-                            <div className="flex items-center gap-1">
-                              <Activity className="h-3 w-3" />
-                              <span>{drive.organizer}</span>
-                            </div>
-                          )}
-                        </div>
-                        {drive.contactPhone && (
-                          <p className="text-xs text-muted-foreground">
-                            Contact: {drive.contactPhone}
-                          </p>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
+            {/* Drives in donor's area */}
+            {inAreaDrives.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 pt-1 pb-1">
+                  <MapPin className="h-3 w-3 text-primary" />
+                  <span className="text-xs font-medium text-primary">In Your Area ({inAreaDrives.length})</span>
                 </div>
-              );
-            })}
+                {inAreaDrives.slice(0, 5).map((drive) => {
+                  let days: string[] = [];
+                  try { days = JSON.parse(drive.scheduledDays); } catch { days = []; }
+
+                  const isExpanded = expandedId === drive.id;
+                  const fmtDate = (d: string) => {
+                    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  };
+
+                  return (
+                    <div
+                      key={drive.id}
+                      className="rounded-xl border border-primary/30 bg-primary/5 transition-all hover:shadow-sm"
+                    >
+                      <button
+                        className="flex items-center gap-3 w-full p-3 text-left"
+                        onClick={() => setExpandedId(isExpanded ? null : drive.id)}
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+                          <Droplets className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-foreground text-sm truncate">{drive.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {fmtDate(drive.startDate)} · <MapPin className="inline h-3 w-3" /> {drive.city}
+                          </p>
+                        </div>
+                        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                      </button>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="px-3 pb-3 pt-0"
+                        >
+                          <div className="ml-5 pl-4 space-y-2 border-l-2 border-primary/20">
+                            <p className="text-xs text-muted-foreground">{drive.description}</p>
+                            <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                <span>{drive.location}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{drive.startTime} — {drive.endTime}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <CalendarDays className="h-3 w-3" />
+                                <span>{days.join(', ')}</span>
+                              </div>
+                              {drive.organizer && (
+                                <div className="flex items-center gap-1">
+                                  <Activity className="h-3 w-3" />
+                                  <span>{drive.organizer}</span>
+                                </div>
+                              )}
+                            </div>
+                            {drive.contactPhone && (
+                              <p className="text-xs text-muted-foreground">
+                                Contact: {drive.contactPhone}
+                              </p>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Other drives not in donor's area */}
+            {otherDrives.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 pt-2 pb-1">
+                  <div className="h-px flex-1 bg-border/40" />
+                  <span className="text-xs text-muted-foreground">Other Locations ({otherDrives.length})</span>
+                  <div className="h-px flex-1 bg-border/40" />
+                </div>
+                {otherDrives.slice(0, 5).map((drive) => {
+                  let days: string[] = [];
+                  try { days = JSON.parse(drive.scheduledDays); } catch { days = []; }
+
+                  const isExpanded = expandedId === drive.id;
+                  const fmtDate = (d: string) => {
+                    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  };
+
+                  return (
+                    <div
+                      key={drive.id}
+                      className="rounded-xl border border-border/40 bg-white transition-all hover:shadow-sm"
+                    >
+                      <button
+                        className="flex items-center gap-3 w-full p-3 text-left"
+                        onClick={() => setExpandedId(isExpanded ? null : drive.id)}
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/50">
+                          <Droplets className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-foreground text-sm truncate">{drive.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {fmtDate(drive.startDate)} · <MapPin className="inline h-3 w-3" /> {drive.city}
+                          </p>
+                        </div>
+                        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                      </button>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="px-3 pb-3 pt-0"
+                        >
+                          <div className="ml-5 pl-4 space-y-2 border-l-2 border-border/30">
+                            <p className="text-xs text-muted-foreground">{drive.description}</p>
+                            <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                <span>{drive.location}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{drive.startTime} — {drive.endTime}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <CalendarDays className="h-3 w-3" />
+                                <span>{days.join(', ')}</span>
+                              </div>
+                              {drive.organizer && (
+                                <div className="flex items-center gap-1">
+                                  <Activity className="h-3 w-3" />
+                                  <span>{drive.organizer}</span>
+                                </div>
+                              )}
+                            </div>
+                            {drive.contactPhone && (
+                              <p className="text-xs text-muted-foreground">
+                                Contact: {drive.contactPhone}
+                              </p>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            )}
 
             {/* Show cancelled drives */}
             {cancelledDrives.length > 0 && (

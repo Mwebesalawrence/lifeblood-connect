@@ -38,8 +38,8 @@ export const api = {
     list: (donorId: string) => request<any[]>(`/appointments?donorId=${donorId}`),
     create: (data: Record<string, string>) =>
       request<any>('/appointments', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: Record<string, string>) =>
-      request<any>(`/appointments/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+        update: (data: { id: string; status: string }) =>
+      request<any>('/appointments', { method: 'PUT', body: JSON.stringify(data) }),
   },
   donations: {
     list: (donorId?: string) =>
