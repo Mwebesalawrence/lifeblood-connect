@@ -160,6 +160,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TIME_SLOTS = ['06:00 AM', '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM'];
 const DRIVE_STATUSES = ['UPCOMING', 'ACTIVE', 'COMPLETED', 'CANCELLED'];
+const APPOINTMENT_STATUSES = ['SCHEDULED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'];
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -803,6 +804,90 @@ function RecordDonationDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+// Appointments Tab
+function AppointmentsTab() {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const { toast } = useToast();
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const loadAppointments = useCallback(async () => {
+    try { setAppointments(await api.appointments.list('')); } catch {} finally { setLoading(false); }
+  }, []);
+  useEffect(() => { loadAppointments(); }, [loadAppointments]);
+
+  const filteredAppointments = useMemo(() => {
+    if (statusFilter === 'all') return appointments;
+    return appointments.filter((a) => a.status === statusFilter);
+  }, [appointments, statusFilter]);
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    setUpdatingId(id);
+    try {
+      await api.appointments.update({ id, status: newStatus });
+      toast({ title: `Appointment ${newStatus}`, description: 'Status updated successfully' });
+      setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a)));
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
+    } finally { setUpdatingId(null); }
+  };
+
+  if (loading) return <div className="space-y-4"><Skeleton className="h-10 w-40" /><TableSkeleton /></div>;
+
+  return (
+    <motion.div {...fadeInUp}>
+      <div className="flex flex-col sm:flex-row justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2"><CalendarDays className="h-5 w-5 text-red-600" />Appointments</h2>
+          <p className="text-sm text-muted-foreground">{filteredAppointments.length} appointments</p>
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            {APPOINTMENT_STATUSES.map((s) => <SelectItem key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <Card className="border-border/50 rounded-xl"><CardContent className="p-0">
+        <div className="max-h-[500px] overflow-y-auto"><Table><TableHeader><TableRow>
+          <TableHead className="text-xs">Center</TableHead>
+          <TableHead className="text-xs">Date</TableHead>
+          <TableHead className="text-xs hidden md:table-cell">Time</TableHead>
+          <TableHead className="text-xs">Status</TableHead>
+          <TableHead className="text-xs text-right">Actions</TableHead>
+        </TableRow></TableHeader><TableBody>
+          {filteredAppointments.length > 0 ? filteredAppointments.map((apt) => (
+            <TableRow key={apt.id}>
+              <TableCell className="text-sm font-medium">{apt.center?.name || 'Unknown'}</TableCell>
+              <TableCell className="text-xs">{formatDate(apt.date)}</TableCell>
+              <TableCell className="text-xs text-muted-foreground hidden md:table-cell">{apt.timeSlot}</TableCell>
+              <TableCell>
+                <Badge className={`text-[10px] border ${getStatusVariant(apt.status)}`}>{apt.status}</Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex items-center justify-end gap-1">
+                  {APPOINTMENT_STATUSES.filter((s) => s !== apt.status).map((s) => (
+                    <button
+                      key={s}
+                      disabled={updatingId === apt.id}
+                      onClick={() => handleStatusChange(apt.id, s)}
+                      className="px-2 py-1 rounded text-[10px] font-medium border border-border/50 text-muted-foreground hover:border-red-200 hover:text-red-600 transition-all disabled:opacity-50"
+                    >
+                      {s.charAt(0) + s.slice(1).toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </TableCell>
+            </TableRow>
+          )) : <TableRow><TableCell colSpan={5} className="text-center py-8">No appointments found</TableCell></TableRow>}
+        </TableBody></Table></div>
+      </CardContent></Card>
+    </motion.div>
+  );
+}
+
 // Donations Tab
 function DonationsTab() {
   const [donations, setDonations] = useState<DonationRecord[]>([]);
@@ -820,7 +905,7 @@ function DonationsTab() {
   return (
     <motion.div {...fadeInUp}>
       <div className="flex flex-col sm:flex-row justify-between gap-3 mb-4">
-        <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="COMPLETED">Completed</SelectItem><SelectItem value="SCHEDULED">Scheduled</SelectItem></SelectContent></Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="COMPLETED">Completed</SelectItem></SelectContent></Select>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild><Button className="bg-red-600 hover:bg-red-700"><Plus className="h-4 w-4 mr-2" />Record Donation</Button></DialogTrigger>
           <RecordDonationDialog onClose={() => setDialogOpen(false)} />
@@ -856,6 +941,7 @@ export default function AdminView() {
   const navItems = [
     { value: 'overview', label: 'Overview', icon: LayoutDashboard },
     { value: 'donors', label: 'Donors', icon: Users },
+    { value: 'appointments', label: 'Appointments', icon: CalendarDays },
     { value: 'centers', label: 'Centers', icon: MapPin },
     { value: 'donations', label: 'Donations', icon: Droplets },
     { value: 'blood-drives', label: 'Blood Drives', icon: Calendar },
@@ -884,6 +970,7 @@ export default function AdminView() {
             <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
               <TabsContent value="overview" className="mt-0"><OverviewTab /></TabsContent>
               <TabsContent value="donors" className="mt-0"><DonorsTab /></TabsContent>
+              <TabsContent value="appointments" className="mt-0"><AppointmentsTab /></TabsContent>
               <TabsContent value="centers" className="mt-0"><CentersTab /></TabsContent>
               <TabsContent value="donations" className="mt-0"><DonationsTab /></TabsContent>
               <TabsContent value="blood-drives" className="mt-0"><BloodDrivesTab /></TabsContent>
