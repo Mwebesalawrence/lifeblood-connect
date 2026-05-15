@@ -10,8 +10,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   };
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${res.status}`);
+        const error = await res.json().catch(() => ({ message: 'Request failed', error: 'Request failed' }));
+    throw new Error(error.error || error.message || `HTTP ${res.status}`);
   }
   return res.json();
 }
@@ -55,8 +55,8 @@ export const api = {
   },
   notifications: {
     list: (userId: string) => request<any[]>(`/notifications?userId=${userId}`),
-    markRead: (id: string) =>
-      request<any>(`/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ isRead: true }) }),
+        markAllRead: () =>
+      request<any>('/notifications', { method: 'PUT', body: JSON.stringify({ userId }) }),
   },
   rewards: {
     list: () => request<any[]>('/rewards'),

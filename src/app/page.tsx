@@ -28,26 +28,124 @@ function ViewRouter() {
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
-        key={currentView}
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="flex-1"
-      >
-        {currentView === 'landing' && <LandingPage />}
-        {currentView === 'dashboard' && <DashboardView />}
-        {currentView === 'centers' && <CentersView />}
-        {currentView === 'center-detail' && <CenterDetailView />}
-        {currentView === 'appointments' && <AppointmentsView />}
-        {currentView === 'rewards' && <RewardsView />}
-        {currentView === 'education' && <EducationView />}
-        {currentView === 'admin' && <AdminView />}
-        {currentView === 'profile' && <ProfileView />}
-      </motion.div>
-    </AnimatePresence>
+  {currentView === 'landing' && (
+    <motion.div
+      key="landing"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <LandingPage />
+    </motion.div>
+  )}
+  {currentView === 'dashboard' && (
+    <motion.div
+      key="dashboard"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <DashboardView />
+    </motion.div>
+  )}
+  {currentView === 'centers' && (
+    <motion.div
+      key="centers"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <CentersView />
+    </motion.div>
+  )}
+  {currentView === 'center-detail' && (
+    <motion.div
+      key="center-detail"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <CenterDetailView />
+    </motion.div>
+  )}
+  {currentView === 'appointments' && (
+    <motion.div
+      key="appointments"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <AppointmentsView />
+    </motion.div>
+  )}
+  {currentView === 'rewards' && (
+    <motion.div
+      key="rewards"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <RewardsView />
+    </motion.div>
+  )}
+  {currentView === 'education' && (
+    <motion.div
+      key="education"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <EducationView />
+    </motion.div>
+  )}
+  {currentView === 'admin' && (
+    <motion.div
+      key="admin"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <AdminView />
+    </motion.div>
+  )}
+  {currentView === 'profile' && (
+    <motion.div
+      key="profile"
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="flex-1"
+    >
+      <ProfileView />
+    </motion.div>
+  )}
+</AnimatePresence>
   );
 }
 

@@ -335,7 +335,7 @@ function BloodDrivesInArea() {
 }
 
 export default function DashboardView() {
-  const { currentUser, setCurrentView, setAuthDialogOpen, setAuthDialogMode } = useAppStore();
+  const { currentUser, setCurrentView, setAuthDialogOpen, setAuthDialogMode, setNotifications: setStoreNotifications } = useAppStore();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -392,7 +392,7 @@ export default function DashboardView() {
     });
   };
 
-  const getNextEligible = () => {
+    const getNextEligible = () => {
     if (!currentUser.nextEligibleDate) return null;
     const diff = new Date(currentUser.nextEligibleDate).getTime() - Date.now();
     if (diff <= 0) return 'Eligible now!';
@@ -400,10 +400,28 @@ export default function DashboardView() {
     return `${days} days remaining`;
   };
 
+  const getDonorAge = () => {
+    if (!currentUser.dateOfBirth) return null;
+    const dob = new Date(currentUser.dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const donorAge = getDonorAge();
+  const isTooYoung = donorAge !== null && donorAge < 17;
+  const isAgeEligible = donorAge === null || donorAge >= 17;
+
   const markAllRead = async () => {
     try {
-      await api.notifications.markRead(currentUser.id);
-      setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
+      await api.notifications.markAllRead();
+      const updated = notifications.map((n) => ({ ...n, isRead: true }));
+      setNotifications(updated);
+      setStoreNotifications(updated);
     } catch {}
   };
 
@@ -430,7 +448,11 @@ export default function DashboardView() {
                     </Badge>
                   )}
                   <span className="text-sm text-white/80">
-                    {currentUser.isEligible ? (
+                    {isTooYoung ? (
+                      <span className="flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" /> Not eligible (age {donorAge})
+                      </span>
+                    ) : currentUser.isEligible ? (
                       <span className="flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" /> Eligible to donate
                       </span>
@@ -671,7 +693,31 @@ export default function DashboardView() {
           </motion.div>
 
           {/* Eligibility Tracker */}
-          {!currentUser.isEligible && currentUser.lastDonationDate && (
+                    {/* Too young to donate */}
+          {isTooYoung && (
+            <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
+              <Card className="border-red-200 bg-red-50/50 shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
+                      <AlertCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-red-800">Age Requirement Not Met</p>
+                      <p className="mt-1 text-sm text-red-700">
+                        You must be at least <strong>17 years old</strong> to donate blood in Uganda. 
+                        You are currently <strong>{donorAge} years old</strong>. 
+                        You will become eligible on your 17th birthday.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Waiting period after last donation */}
+          {!currentUser.isEligible && currentUser.lastDonationDate && isAgeEligible && (
             <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
               <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
                 <CardContent className="p-5">
@@ -694,7 +740,7 @@ export default function DashboardView() {
             </motion.div>
           )}
 
-          {currentUser.isEligible && (
+          {currentUser.isEligible && isAgeEligible && (
             <motion.div {...fadeUp} transition={{ duration: 0.4, delay: 0.4 }}>
               <Card className="border-green-200 bg-green-50/50 shadow-sm">
                 <CardContent className="p-5">

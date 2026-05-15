@@ -15,6 +15,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
     }
 
+        // Age check: minimum 17 years old to donate blood (Uganda requirement)
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      if (age < 17) {
+        return NextResponse.json(
+          { error: 'You must be at least 17 years old to register as a blood donor' },
+          { status: 400 }
+        );
+      }
+    }
+
     const token = randomUUID();
     const user = await db.user.create({
       data: {
@@ -27,6 +44,7 @@ export async function POST(request: NextRequest) {
         gender,
         city,
         address,
+        isEligible: true,
         token,
       },
     });
