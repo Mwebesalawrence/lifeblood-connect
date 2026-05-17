@@ -1,4 +1,4 @@
-import { useAppStore } from './store';
+import { useAppStore, type User } from './store';
 
 const API_BASE = '/api';
 
@@ -16,15 +16,17 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+type AuthPayload = { user: User; token: string };
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
-      request<{ user: any; token: string }>('/auth', {
+      request<AuthPayload>('/auth', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
-    register: (data: Record<string, string>) =>
-      request<{ user: any; token: string }>('/auth/register', {
+    register: (data: Record<string, string | undefined>) =>
+      request<AuthPayload>('/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -36,7 +38,7 @@ export const api = {
   },
   appointments: {
     list: (donorId: string) => request<any[]>(`/appointments?donorId=${donorId}`),
-    create: (data: Record<string, string>) =>
+    create: (data: Record<string, string | undefined>) =>
       request<any>('/appointments', { method: 'POST', body: JSON.stringify(data) }),
         update: (data: { id: string; status: string }) =>
       request<any>('/appointments', { method: 'PUT', body: JSON.stringify(data) }),
@@ -55,8 +57,8 @@ export const api = {
   },
   notifications: {
     list: (userId: string) => request<any[]>(`/notifications?userId=${userId}`),
-        markAllRead: () =>
-      request<any>('/notifications', { method: 'PUT', body: JSON.stringify({ userId }) }),
+    markAllRead: () =>
+      request<{ success: boolean }>('/notifications', { method: 'PUT' }),
   },
   rewards: {
     list: () => request<any[]>('/rewards'),
@@ -85,3 +87,8 @@ export const api = {
       request<any>(`/blood-drives/${id}`, { method: 'DELETE' }),
   },
 };
+
+export const loginAPI = api.auth.login;
+export const registerAPI = api.auth.register;
+export const fetchNotifications = api.notifications.list;
+export const markNotificationsRead = api.notifications.markAllRead;

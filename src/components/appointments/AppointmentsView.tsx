@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import {
   CalendarDays,
   Clock,
@@ -98,7 +98,7 @@ function isUpcoming(dateStr: string, status: string): boolean {
 /*  Card Animation Variants                                            */
 /* ------------------------------------------------------------------ */
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: (i: number) => ({
     opacity: 1,
