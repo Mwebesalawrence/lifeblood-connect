@@ -10,19 +10,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function NotificationBell() {
-  const { token, notifications, setNotifications, unreadCount } = useAppStore();
+  const { currentUser, token, notifications, setNotifications, unreadCount } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const loadNotifications = useCallback(async () => {
-    if (!token) return;
+    if (!currentUser) return;
     try {
-      const data = await fetchNotifications(token);
+      const data = await fetchNotifications(currentUser.id);
       setNotifications(data);
     } catch {
       // silent
     }
-  }, [token, setNotifications]);
+  }, [currentUser, setNotifications]);
 
   useEffect(() => {
     loadNotifications();
@@ -32,7 +32,7 @@ export default function NotificationBell() {
     if (!token) return;
     setLoading(true);
     try {
-      await markNotificationsRead(token);
+      await markNotificationsRead();
       setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
     } catch {
       // silent
